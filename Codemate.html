@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CodeMate</title>
+  <!-- CodeMirror CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/material-darker.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/default.min.css" />
+  <style>
+:root {
+  --bg-color: #020817;
+  --sidebar-color: #020817;
+  --text-color: #fff;
+  --highlight: #2a2f4a;
+  --button-border: rgba(255, 255, 255, 0.2);
+  --button-hover: rgba(255, 255, 255, 0.1);
+  --sidebar-width: 250px;
+  --search-highlight: #aa9453;
+}
+
+[data-theme="light"] {
+  --bg-color: #f4f4f4;
+  --sidebar-color: #f4f4f4;
+  --text-color: #111;
+  --highlight: #ddd;
+  --button-border: rgba(0, 0, 0, 0.2);
+  --button-hover: rgba(0, 0, 0, 0.1);
+  --search-highlight: #d4b062;
+}
+
+/* Reset box-sizing for all elements */
+* {
+  box-sizing: border-box;
+}
+
+/* Body styles */
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Welcome Screen Styles */
+.welcome-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Centered vertically */
+  align-items: center; /* Centered horizontally */
+  background: var(--bg-color);
+  z-index: 1000;
+  transition: opacity 0.3s ease;
+}
+
+.welcome-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.welcome-content {
+  max-width: 600px;
+  text-align: center;
+  padding: 20px;
+}
+
+.welcome-title {
+  font-size: 3.5rem;
+  margin-bottom: 20px;
+  background: linear-gradient(90deg, #ff4d4d, #f9cb28);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: bold;
+  /* Make CodeMate name not highlightable */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.welcome-message {
+  font-size: 1.2rem;
+  line-height: 1.6;
+  margin-bottom: 40px;
+  opacity: 0.9;
+}
+
+.welcome-buttons {
+  display: flex;
+  gap: 20px;
+  margin-top: 30px;
+  justify-content: center;
+}
+
+.welcome-button {
+  padding: 15px 30px;
+  border-radius: 8px;
+  background: var(--highlight);
+  color: var(--text-color);
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.welcome-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.welcome-button i {
+  font-size: 1.5rem;
+}
+
+/* Header styles for h2 */
+h2 {
+  position: relative;
+  padding-right: 30px; /* space for the close button */
+  margin: 0 0 15px 0;
+}
+
+/* Style for the close button */
+button.close-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+button.close-btn:hover {
+  background: var(--button-hover);
+}
+
+/* Sidebar container - fixed position */
+.sidebar-container {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: var(--sidebar-width);
+  height: 100vh;
+  z-index: 10;
+  transition: transform 0.3s ease;
+}
+
+/* Collapsed state */
+.sidebar-container.collapsed {
+  transform: translateX(calc(-1 * var(--sidebar-width)));
+}
+
+/* Sidebar styles - improved layout structure */
+.sidebar {
+  width: 100%;
+  height: 100%;
+  background: var(--sidebar-color);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--highlight);
+  transform: translateX(0);
+}
+
+/* Sidebar header section */
+.sidebar-header {
+  padding: 20px 20px 10px 20px;
+  flex-shrink: 0;
+}
+/* Make CodeMate in sidebar not highlightable */
+.sidebar-header h2 {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Sidebar content - scrollable middle section */
+.sidebar-content {
+  flex: 1;
+  padding: 0 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for flexbox scrolling */
+}
+
+/* File actions section */
+.file-actions {
+  flex-shrink: 0;
+  margin-bottom: 20px;
+}
+
+/* Open files section - takes remaining space and scrolls */
+.open-files-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for flexbox scrolling */
+}
+
+/* Sidebar footer - fixed at bottom */
+.sidebar-footer {
+  padding: 15px 20px 20px 20px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--highlight);
+  margin-top: auto;
+}
+
+/* Settings panel styles */
+.settings-panel {
+  width: 100%;
+  height: 100%;
+  background: var(--sidebar-color);
+  padding: 20px;
+  transition: transform 0.3s ease;
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--highlight);
+  transform: translateX(-100%);
+  z-index: 11;
+}
+
+.settings-panel.active {
+  transform: translateX(0);
+}
+
+/* About panel styles - full page overlay */
+.about-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--sidebar-color);
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.about-overlay.active {
+  display: block;
+}
+
+.about-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background: var(--bg-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.about-content h2 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 1.8em;
+  color: var(--text-color);
+}
+
+.about-content h3 {
+  margin-top: 30px;
+  margin-bottom: 15px;
+  font-size: 1.3em;
+  color: var(--text-color);
+  border-bottom: 1px solid var(--highlight);
+  padding-bottom: 8px;
+}
+
+.about-content p {
+  line-height: 1.7;
+  margin-bottom: 20px;
+  font-size: 1.05em;
+}
+
+.about-content ul {
+  padding-left: 25px;
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.about-content li {
+  margin-bottom: 10px;
+}
+
+.about-close-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--highlight);
+  border: none;
+  color: var(--text-color);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.about-close-btn:hover {
+  background: var(--button-hover);
+}
+
+/* Main content styles - always offset by sidebar width */
+.main {
+  margin-left: var(--sidebar-width);
+  width: calc(100vw - var(--sidebar-width));
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Collapsed state for main content */
+.main.collapsed {
+  margin-left: 0;
+  width: 100vw;
+}
+
+/* Top bar styles */
+.top-bar {
+  display: flex;
+  background: var(--sidebar-color);
+  padding: 10px;
+  align-items: center;
+  border-bottom: 1px solid var(--highlight);
+  z-index: 2;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Search box styles */
+.search-container {
+  position: relative;
+  flex-grow: 1;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+}
+
+/* Sidebar toggle button */
+.sidebar-toggle {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 1.2rem;
+  margin-right: 10px;
+  padding: 5px;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.sidebar-toggle:hover {
+  background: var(--button-hover);
+}
+
+.top-bar input[type="text"] {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-color);
+  border: 1px solid var(--highlight);
+  color: var(--text-color);
+  border-radius: 4px;
+  font-family: sans-serif;
+  /* Adjusted padding-right to make space for search results, clear button, and nav arrows */
+  padding-right: 170px; /* Increased from 100px */
+}
+
+.search-results {
+  position: absolute;
+  right: 120px; /* Adjusted from 95px */
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-color);
+  opacity: 0.7;
+  font-size: 0.8em;
+  pointer-events: none;
+}
+
+/* New: Clear search button */
+#clearSearchBtn {
+  /* Positioned relative to its parent .top-bar, not .search-container */
+  /* Moved out of .search-container to be next to search nav buttons */
+  padding: 6px 8px; /* Smaller padding for arrows */
+  font-size: 1.0em; /* Adjust font size for arrow symbols */
+  line-height: 1; /* Ensure vertical alignment */
+  width: 30px; /* Fixed width for consistent size */
+  height: 30px; /* Fixed height for consistent size */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px; /* Rounded corners */
+  border: 1px solid var(--button-border);
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background 0.3s ease;
+  margin-left: 5px; /* Space from search nav buttons */
+}
+
+#clearSearchBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+
+/* Buttons in top bar */
+.top-bar button {
+  width: auto;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--button-border);
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+.top-bar button:hover {
+  background: var(--button-hover);
+}
+
+/* New: Search navigation buttons */
+.search-nav-buttons {
+  display: flex;
+  gap: 5px; /* Small gap between arrows */
+  margin-left: 5px; /* Space from search button */
+}
+
+.search-nav-buttons button {
+  padding: 6px 8px; /* Smaller padding for arrows */
+  font-size: 1.0em; /* Adjust font size for arrow symbols */
+  line-height: 1; /* Ensure vertical alignment */
+  width: 30px; /* Fixed width for consistent size */
+  height: 30px; /* Fixed height for consistent size */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px; /* Rounded corners */
+  border: 1px solid var(--button-border);
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.search-nav-buttons button:hover {
+  background: var(--button-hover);
+}
+
+/* Tabs container - with horizontal scrolling */
+.tabs-container {
+  background: var(--sidebar-color);
+  border-bottom: 1px solid var(--highlight);
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+}
+
+/* Tabs styles */
+.tabs {
+  display: flex;
+  padding: 5px 10px;
+  gap: 5px;
+  min-width: fit-content;
+  height: 40px;
+}
+
+.tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tabs::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+
+.tabs::-webkit-scrollbar-thumb {
+  background: var(--highlight);
+  border-radius: 3px;
+}
+
+.tabs::-webkit-scrollbar-thumb:hover {
+  background: var(--text-color);
+}
+
+.tab {
+  padding: 6px 12px;
+  background: var(--highlight);
+  color: var(--text-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 0.9em;
+  height: 28px;
+  min-width: fit-content;
+  flex-shrink: 0;
+}
+.tab:hover {
+  background: #3c3f58;
+}
+.tab.active {
+  background: var(--text-color);
+  color: var(--bg-color);
+}
+.tab-close {
+  background: none;
+  border: none;
+  color: currentColor;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 0.8em;
+}
+.tab-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Open files list - improved scrolling */
+.open-files-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 5px; /* Space for scrollbar */
+  min-height: 100px; /* Minimum height to ensure visibility */
+}
+
+.open-files-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.open-files-list::-webkit-scrollbar-track {
+  background: var(--bg-color);
+  border-radius: 3px;
+}
+
+.open-files-list::-webkit-scrollbar-thumb {
+  background: var(--highlight);
+  border-radius: 3px;
+}
+
+.open-files-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-color);
+}
+
+.open-file-item {
+  padding: 8px 12px;
+  margin: 2px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s ease;
+}
+.open-file-item:hover {
+  background: var(--highlight);
+}
+.open-file-item.active {
+  background: var(--highlight);
+  font-weight: bold;
+}
+.open-file-item-close {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8em;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+.open-file-item-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 1;
+}
+
+/* Editor container styles - fixed dimensions */
+.editor-container {
+  flex-grow: 1;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 90px); /* Adjust based on top-bar and tabs height */
+}
+
+/* CodeMirror wrapper to ensure it fills the container */
+.CodeMirror {
+  height: 100% !important;
+  width: 100% !important;
+  font-size: 13px; /* default font size, will override via JS */
+}
+
+/* Buttons styling */
+button {
+  width: 100%;
+  margin: 5px 0;
+  padding: 10px;
+  background: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--button-border);
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.3s ease;
+}
+button:hover {
+  background: var(--button-hover);
+}
+
+/* Section headers */
+.section-header {
+  font-weight: bold;
+  margin: 15px 0 10px 0;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-color);
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+/* Labels styling */
+label {
+  display: block;
+  margin: 10px 0;
+}
+
+/* Range inputs */
+input[type="range"] {
+  width: 100%;
+  margin-top: 5px;
+  -webkit-appearance: none;
+  height: 4px;
+  background: var(--highlight);
+  border-radius: 2px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--text-color);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--bg-color);
+}
+
+/* Checkboxes */
+input[type="checkbox"] {
+  margin-right: 8px;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--highlight);
+  border-radius: 3px;
+  position: relative;
+  top: 3px;
+  cursor: pointer;
+}
+input[type="checkbox"]:checked {
+  background: var(--text-color);
+}
+input[type="checkbox"]:checked::after {
+  content: "✓";
+  position: absolute;
+  color: var(--bg-color);
+  font-size: 12px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Select dropdown */
+select {
+  width: 100%;
+  padding: 8px;
+  background: var(--highlight);
+  color: var(--text-color);
+  border: none;
+  border-radius: 4px; /* Corrected syntax error here */
+  margin-top: 5px;
+}
+
+/* Hide class */
+.hidden {
+  display: none;
+}
+
+/* Modal styles */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+}
+.modal-content {
+  background: var(--sidebar-color);
+  padding: 20px;
+  border-radius: 8px;
+  width: 300px;
+  max-width: 90%;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+.modal-buttons button {
+  width: auto;
+  padding: 8px 16px;
+}
+
+/* Theme switch */
+.theme-switch {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.theme-switch button {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  border-radius: 4px;
+}
+.theme-switch button.active {
+  background: var(--text-color);
+  color: var(--bg-color);
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--highlight);
+  margin: 15px 0;
+}
+
+/* Settings button - now in footer */
+.settings-button {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+/* About button */
+.about-button {
+  margin-top: 20px !important;
+  background: var(--highlight) !important;
+  text-align: center !important;
+}
+
+/* Search highlight style */
+.cm-searching {
+  background-color: var(--search-highlight) !important;
+  color: #000 !important;
+}
+
+/* --- Custom context menu styles --- */
+#contextMenu {
+  position: absolute;
+  display: none;
+  background: var(--sidebar-color);
+  border: 1px solid var(--highlight);
+  border-radius: 4px;
+  z-index: 2000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  min-width: 150px;
+}
+
+#contextMenu ul {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+#contextMenu li {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+#contextMenu li:hover {
+  background: var(--highlight);
+}
+.welcome-layout {
+  display: flex;
+  width: 100%;
+  max-width: 1200px;
+  justify-content: center; /* Centered horizontally */
+  align-items: center; /* Centered vertically */
+  flex-direction: column; /* Stack items vertically */
+  gap: 20px; /* Reduced gap */
+}
+
+.welcome-left {
+  flex: none; /* No flex growth */
+  padding: 0; /* Remove padding */
+  text-align: center; /* Center text */
+}
+
+.welcome-right {
+  display: none; /* Hide the right panel entirely */
+}
+
+.welcome-subtitle {
+  font-size: 1.1rem;
+  color: #aaa;
+  margin-bottom: 40px;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: #ddd;
+}
+
+.start-options {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.start-options li {
+  margin-bottom: 10px;
+}
+
+.start-btn, .walkthrough-btn {
+  background: #2a2f4a;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 18px;
+  border-radius: 5px;
+  text-align: center; /* Center text */
+  font-size: 1rem;
+  width: 220px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.start-btn:hover, .walkthrough-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.gradient {
+  background: linear-gradient(90deg, #ff4d4d, #f9cb28);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.welcome-title {
+  margin-bottom: 4px !important; /* force override */
+}
+
+.welcome-subtitle {
+  margin-top: 0 !important;
+}
+
+  </style>
+</head>
+<body data-theme="dark">
+
+<!-- Welcome Screen -->
+<div class="welcome-screen" id="welcomeScreen">
+  <div class="welcome-layout">
+    <!-- Left Panel -->
+    <div class="welcome-left">
+      <h1 class="welcome-title gradient">CodeMate</h1>
+      <p class="welcome-subtitle">Code. Compile. Conquer.</p>
+
+      <!-- Removed "Start" section title -->
+      <ul class="start-options">
+        <li><button class="start-btn" onclick="startNewFile()">Start New File</button></li>
+        <!-- Removed Open Folder and Manage Projects buttons -->
+      </ul>
+    </div>
+
+    <!-- Right Panel - Removed entirely -->
+  </div>
+</div>
+
+<!-- Sidebar container with fixed positioning -->
+<div class="sidebar-container" id="sidebarContainer">
+  <!-- Main sidebar -->
+  <div class="sidebar" id="mainSidebar">
+    <!-- Header section -->
+    <div class="sidebar-header">
+      <h2>CodeMate</h2>
+    </div>
+    
+    <!-- Content section - scrollable -->
+    <div class="sidebar-content">
+      <!-- File actions -->
+      <div class="file-actions">
+        <div class="section-header">File</div>
+        <button onclick="createNewFile()">+ New File</button>
+        <button onclick="openFile()">Open File</button>
+        <button onclick="saveFile()">Save As</button>
+      </div>
+      
+      <!-- Open files section -->
+      <div class="open-files-section">
+        <div class="section-header">Open Files</div>
+        <div class="open-files-list" id="openFilesList"></div>
+      </div>
+    </div>
+    
+    <!-- Footer section -->
+    <div class="sidebar-footer">
+      <button class="settings-button" onclick="toggleSettings()">⚙️ Settings</button>
+    </div>
+  </div>
+
+  <!-- Settings panel -->
+  <div class="settings-panel" id="settingsSidebar">
+    <h2>
+      Settings
+      <button class="close-btn" aria-label="Close" onclick="toggleSettings()">×</button>
+    </h2>
+    <div class="divider"></div>
+    <div class="section-header">Editor</div>
+    <label>Font Size:
+      <input type="range" min="8" max="48" value="13" id="fontSizeSlider"/>
+    </label>
+    <label>Tab Size:
+      <input type="range" min="1" max="8" value="2" id="tabSizeSlider"/>
+    </label>
+    <label><input type="checkbox" id="convertTabs"> Convert tabs to spaces</label>
+    <label><input type="checkbox" id="lineWrap" checked> Line wrapping</label>
+    <label><input type="checkbox" id="lineNumbers" checked> Show line numbers</label>
+    <div class="divider"></div>
+    <div class="section-header">Appearance</div>
+    <label>Theme:</label>
+    <div class="theme-switch">
+      <button onclick="setTheme('light')">Light</button>
+      <button onclick="setTheme('dark')" class="active">Dark</button>
+      <button onclick="setTheme('system')">System</button>
+    </div>
+    <button class="about-button" onclick="showAboutPanel()">About + Info + Tips</button>
+  </div>
+</div>
+
+<!-- Main editor - fixed width, offset by sidebar -->
+<div class="main" id="editorContainer">
+  <div class="top-bar">
+    <div class="search-container">
+      <button class="sidebar-toggle" id="sidebarToggle">◀</button>
+      <input type="text" id="searchBox" placeholder="Search in file..." onkeydown="if(event.key==='Enter') searchInFile()">
+      <div class="search-results" id="searchResults"></div>
+    </div>
+    <button onclick="searchInFile()">🔍</button>
+    <!-- New: Search navigation buttons -->
+    <div class="search-nav-buttons" id="searchNavButtons" style="display: none;">
+      <button id="searchUpBtn" title="Previous Match">⬆</button>
+      <button id="searchDownBtn" title="Next Match">⬇</button>
+      <!-- Clear search button moved here -->
+      <button id="clearSearchBtn" title="Clear Search" style="display: none;">×</button>
+    </div>
+  </div>
+  <div class="tabs-container">
+    <div class="tabs" id="tabBar"></div>
+  </div>
+  <div class="editor-container" id="editor"></div>
+</div>
+
+<!-- About overlay - full page -->
+<div class="about-overlay" id="aboutOverlay">
+  <button class="about-close-btn" onclick="hideAboutPanel()">×</button>
+  <div class="about-content">
+    <h2>About App + Help + Tips</h2>
+    
+    <p>CodeMate is a versatile and user-friendly code editor designed to provide a streamlined editing experience directly in your web browser. It allows you to create, open, edit, and save various types of text and code files, offering essential features like syntax highlighting, line numbers, and adjustable settings to customize your workspace. Inspired by the simplicity and accessibility of the Chromebook text app and the powerful functionality of VS Code, CodeMate aims to deliver a familiar and efficient environment for quick edits and basic development tasks without the need for complex installations.</p>
+    
+    <h3>System Requirements</h3>
+    <p>CodeMate is a web-based application, which means it runs directly in your browser. For optimal performance, it requires a modern web browser such as Google Chrome, Mozilla Firefox, Microsoft Edge, or Safari. While it's designed to be lightweight, a stable internet connection is recommended for loading external libraries (like CodeMirror) and saving files. The application's performance will largely depend on your device's available RAM and CPU, especially when handling very large files.</p>
+    
+    <h3>Tips for Using CodeMate</h3>
+    <ul>
+      <li><strong>Customize Your Workspace:</strong> Dive into the Settings panel (accessible via the "⚙️ Settings" button in the sidebar) to adjust the font size, tab size, and toggle features like line wrapping and line numbers. You can also switch between light, dark, and system themes to suit your preference.</li>
+      <li><strong>File Management:</strong> Use the "New File," "Open File," and "Save As" buttons in the sidebar to manage your documents. The "Open Files" list and the top tabs provide quick access to all your open files.</li>
+      <li><strong>Efficient Searching:</strong> Utilize the search box in the top bar to quickly find text within your active file. Press Enter after typing your search query to highlight all occurrences.</li>
+    </ul>
+    
+    <h3>File Size and Performance</h3>
+    <p>CodeMate is built using the CodeMirror library, which is highly optimized for in-browser code editing. While there isn't a strict "line limit," the practical capacity of the editor depends on your device's hardware. For most modern computers and typical coding tasks, CodeMate can comfortably handle files with tens of thousands of lines (e.g., 50,000 to 100,000 lines). Beyond this, you might experience minor performance degradation, such as slower scrolling or search operations, depending on the complexity of the code and your system's resources. For extremely large files (hundreds of thousands of lines or more), dedicated desktop editors might offer a more robust experience.</p>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="fileInput" style="display:none"/>
+
+<!-- Confirmation modal -->
+<div class="modal" id="confirmModal">
+  <div class="modal-content">
+    <p>Are you sure you want to close this file?</p>
+    <div class="modal-buttons">
+      <button onclick="closeFileConfirmed()">Yes</button>
+      <button onclick="closeModal()">No</button>
+    </div>
+  </div>
+</div>
+
+<!-- Custom context menu -->
+<div id="contextMenu">
+  <ul>
+    <li id="renameOption">Rename</li>
+  </ul>
+</div>
+
+<!-- CodeMirror JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+<!-- Modes -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/search.min.js"></script>
+
+<script>
+  // Initialize CodeMirror
+let editor = CodeMirror(document.getElementById("editor"), {
+  value: "",
+  mode: "javascript",
+  theme: "material-darker",
+  lineNumbers: true,
+  lineWrapping: true,
+  tabSize: 2,
+  indentWithTabs: false,
+  extraKeys: {
+    "Ctrl-F": function(cm) {
+      document.getElementById("searchBox").focus();
+      document.getElementById("searchBox").select();
+    },
+    "Cmd-F": function(cm) {
+      document.getElementById("searchBox").focus();
+      document.getElementById("searchBox").select();
+    }
+  }
+});
+
+// File management
+let files = [
+  { name: "untitled.txt", content: "", active: true }
+];
+let currentFileIndex = 0;
+
+// Search state
+let currentSearchTerm = "";
+let currentSearchMarkers = [];
+let currentSearchIndex = -1; // Index of the currently focused match
+let totalSearchResults = 0;
+let searchCursor = null; // CodeMirror search cursor
+
+// Welcome screen functions
+function startNewFile() {
+  document.getElementById('welcomeScreen').classList.add('hidden');
+  // Initialize editor if not already done
+  if (!editor) {
+    initializeEditor();
+  }
+}
+
+function initializeEditor() {
+  // Editor is already initialized, but we might need to show it
+  document.getElementById('editorContainer').style.display = 'flex';
+  document.getElementById('sidebarContainer').style.display = 'block'; // Corrected ID
+}
+
+// Update tab display
+function updateTabs() {
+  const tabBar = document.getElementById("tabBar");
+  const openFilesList = document.getElementById("openFilesList");
+  
+  tabBar.innerHTML = '';
+  openFilesList.innerHTML = '';
+  
+  files.forEach((file, index) => {
+    // Top tabs
+    const tab = document.createElement("div");
+    tab.className = `tab ${file.active ? 'active' : ''}`;
+    tab.innerHTML = `
+      ${file.name}
+      <button class="tab-close" onclick="event.stopPropagation(); requestCloseFile(${index})">×</button>
+    `;
+    tab.onclick = () => switchFile(index);
+    tabBar.appendChild(tab);
+    
+    // Sidebar list
+    const listItem = document.createElement("div");
+    listItem.className = `open-file-item ${file.active ? 'active' : ''}`;
+    listItem.innerHTML = `
+      <span title="${file.name}">${file.name}</span>
+      <button class="open-file-item-close" onclick="event.stopPropagation(); requestCloseFile(${index})">×</button>
+    `;
+    
+    // Add right-click (contextmenu) event for renaming
+    listItem.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showRenamePromptAt(e, index); // Use the wrapper function
+    });
+    
+    listItem.onclick = () => switchFile(index);
+    openFilesList.appendChild(listItem);
+  });
+}
+
+// Switch between files
+function switchFile(index) {
+  if (index === currentFileIndex) return;
+  // Save current file content
+  files[currentFileIndex].content = editor.getValue();
+  files[currentFileIndex].active = false;
+  currentFileIndex = index;
+  files[currentFileIndex].active = true;
+  editor.setValue(files[currentFileIndex].content);
+  // Clear and re-highlight search if a term exists
+  if (currentSearchTerm) {
+    highlightAllMatches(currentSearchTerm);
+  }
+  updateTabs();
+}
+
+// Create new file
+function createNewFile() {
+  // Save current
+  files[currentFileIndex].content = editor.getValue();
+  files[currentFileIndex].active = false;
+  const newIndex = files.length;
+  files.push({ 
+    name: `untitled${newIndex}.txt`, 
+    content: "", 
+    active: true 
+  });
+  currentFileIndex = newIndex;
+  editor.setValue("");
+  updateTabs();
+  // Scroll to new tab
+  setTimeout(() => {
+    const tabBar = document.getElementById("tabBar");
+    tabBar.scrollLeft = tabBar.scrollWidth;
+  }, 100);
+  clearSearchAndUI(); // Clear search and hide UI elements
+}
+
+// Open file
+function openFile() {
+  const input = document.getElementById("fileInput");
+  input.accept = "*/*";
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        // Save current
+        files[currentFileIndex].content = editor.getValue();
+        files[currentFileIndex].active = false;
+        const newIndex = files.length;
+        files.push({
+          name: file.name,
+          content: reader.result,
+          active: true
+        });
+        currentFileIndex = newIndex;
+        editor.setValue(reader.result);
+        updateTabs();
+        // Scroll to tab
+        setTimeout(() => {
+          document.getElementById("tabBar").scrollLeft = document.getElementById("tabBar").scrollWidth;
+        }, 100);
+        clearSearchAndUI(); // Clear search and hide UI elements
+      };
+      reader.readAsText(file);
+    }
+  };
+  input.click();
+}
+
+// Save file
+function saveFile() {
+  files[currentFileIndex].content = editor.getValue();
+  const blob = new Blob([files[currentFileIndex].content], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = files[currentFileIndex].name;
+  a.click();
+}
+
+// Request to close
+function requestCloseFile(index) {
+  if (files.length <= 1) {
+    // Replace alert with a custom modal if needed
+    const modal = document.getElementById("confirmModal");
+    modal.querySelector("p").textContent = "You must have at least one file open.";
+    modal.querySelector("#confirmModal button:first-child").style.display = "none"; // Hide Yes button
+    modal.querySelector("#confirmModal button:last-child").textContent = "OK"; // Change No to OK
+    modal.querySelector("#confirmModal button:last-child").onclick = closeModal; // Ensure it closes the modal
+    modal.style.display = "flex";
+    return;
+  }
+  window.fileToClose = index;
+  const modal = document.getElementById("confirmModal");
+  modal.querySelector("p").textContent = "Are you sure you want to close this file?";
+  modal.querySelector("#confirmModal button:first-child").style.display = "inline-block"; // Show Yes button
+  modal.querySelector("#confirmModal button:first-child").onclick = closeFileConfirmed; // Restore Yes action
+  modal.querySelector("#confirmModal button:last-child").textContent = "No"; // Restore No text
+  modal.querySelector("#confirmModal button:last-child").onclick = closeModal; // Restore No action
+  modal.style.display = "flex";
+}
+
+// Confirm close
+function closeFileConfirmed() {
+  const index = window.fileToClose;
+  if (index === currentFileIndex) {
+    // If closing the active file, switch to another one
+    const newIndex = index === 0 ? (files.length > 1 ? 1 : 0) : 0; // If only one file left, it will be index 0
+    // If there's only one file left and it's being closed, this logic prevents error
+    if (files.length === 1 && index === 0) {
+        // This case should ideally be blocked by the requestCloseFile check
+        // But as a safeguard, if somehow we reach here with 1 file, just clear editor
+        files.splice(index, 1);
+        files.push({ name: "untitled.txt", content: "", active: true });
+        currentFileIndex = 0;
+        editor.setValue("");
+    } else {
+        files.splice(index, 1);
+        if (currentFileIndex > index) {
+            currentFileIndex--;
+        }
+        files[currentFileIndex].active = true; // Activate the new current file
+        editor.setValue(files[currentFileIndex].content);
+    }
+  } else {
+    files.splice(index, 1);
+    if (currentFileIndex > index) {
+      currentFileIndex--;
+    }
+  }
+  updateTabs();
+  closeModal();
+  clearSearchAndUI(); // Clear search and hide UI elements
+}
+
+function closeModal() {
+  document.getElementById("confirmModal").style.display = "none";
+}
+
+// Function to clear search and hide related UI elements
+function clearSearchAndUI() {
+  clearSearchHighlights(); // Clear highlights
+  document.getElementById("searchBox").value = ""; // Clear search bar text
+  document.getElementById("searchNavButtons").style.display = "none"; // Hide arrow buttons
+  document.getElementById("clearSearchBtn").style.display = "none"; // Hide clear button
+  document.getElementById("searchResults").textContent = ""; // Clear results counter
+  currentSearchTerm = ""; // Reset search term
+}
+
+// Highlight all matches
+function highlightAllMatches(query) {
+  clearSearchHighlights();
+  if (!query) {
+    document.getElementById("searchResults").textContent = "";
+    document.getElementById("searchNavButtons").style.display = "none";
+    document.getElementById("clearSearchBtn").style.display = "none"; // Hide clear button
+    return;
+  }
+
+  currentSearchTerm = query;
+  const regex = new RegExp(escapeRegExp(query), "gi");
+  let match;
+  const content = editor.getValue();
+  const ranges = [];
+
+  // Collect all occurrences
+  while ((match = regex.exec(content)) !== null) {
+    const startPos = editor.posFromIndex(match.index);
+    const endPos = editor.posFromIndex(match.index + match[0].length);
+    ranges.push({ start: startPos, end: endPos });
+  }
+
+  totalSearchResults = ranges.length;
+  updateSearchResultsCounter();
+
+  // Mark all occurrences
+  currentSearchMarkers = ranges.map(range => {
+    return editor.markText(range.start, range.end, {
+      className: "cm-searching"
+    });
+  });
+
+  if (ranges.length > 0) {
+    currentSearchIndex = 0;
+    // Set the initial cursor position to the first match
+    editor.setCursor(ranges[currentSearchIndex].start);
+    editor.scrollIntoView(ranges[currentSearchIndex].start, 20); // Scroll to it with some padding
+    document.getElementById("searchNavButtons").style.display = "flex"; // Show arrow buttons
+    document.getElementById("clearSearchBtn").style.display = "flex"; // Show clear button
+  } else {
+    currentSearchIndex = -1;
+    document.getElementById("searchNavButtons").style.display = "none"; // Hide arrow buttons
+    document.getElementById("clearSearchBtn").style.display = "none"; // Hide clear button if no results
+  }
+}
+
+function clearSearchHighlights() {
+  currentSearchMarkers.forEach(marker => marker.clear());
+  currentSearchMarkers = [];
+  totalSearchResults = 0;
+  currentSearchIndex = -1;
+  document.getElementById("searchResults").textContent = ""; // Clear counter text
+}
+
+function updateSearchResultsCounter() {
+  const resultsElement = document.getElementById("searchResults");
+  if (totalSearchResults === 0) {
+    resultsElement.textContent = "none found";
+  } else {
+    resultsElement.textContent = `${currentSearchIndex + 1} of ${totalSearchResults} found`;
+  }
+}
+
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function searchInFile() {
+  const query = document.getElementById("searchBox").value.trim();
+  if (query === currentSearchTerm && totalSearchResults > 0) {
+    // If searching the same term and there are results, just go to the next match
+    goToNextMatch();
+    return;
+  }
+  highlightAllMatches(query);
+}
+
+// Navigate to the next search match
+function goToNextMatch() {
+  if (totalSearchResults === 0) return;
+
+  currentSearchIndex = (currentSearchIndex + 1) % totalSearchResults;
+  const ranges = currentSearchMarkers.map(marker => marker.find());
+  
+  if (ranges[currentSearchIndex]) {
+    editor.setCursor(ranges[currentSearchIndex].from);
+    editor.scrollIntoView(ranges[currentSearchIndex].from, 20);
+    updateSearchResultsCounter();
+  }
+}
+
+// Navigate to the previous search match
+function goToPrevMatch() {
+  if (totalSearchResults === 0) return;
+
+  currentSearchIndex = (currentSearchIndex - 1 + totalSearchResults) % totalSearchResults;
+  const ranges = currentSearchMarkers.map(marker => marker.find());
+
+  if (ranges[currentSearchIndex]) {
+    editor.setCursor(ranges[currentSearchIndex].from);
+    editor.scrollIntoView(ranges[currentSearchIndex].from, 20);
+    updateSearchResultsCounter();
+  }
+}
+
+
+// Event listeners for search navigation buttons
+document.getElementById("searchUpBtn").addEventListener("click", goToPrevMatch);
+document.getElementById("searchDownBtn").addEventListener("click", goToNextMatch);
+// Event listener for clear search button
+document.getElementById("clearSearchBtn").addEventListener("click", clearSearchAndUI);
+
+
+// Toggle settings panel
+function toggleSettings() {
+  document.getElementById("settingsSidebar").classList.toggle("active");
+}
+
+// About panel
+function showAboutPanel() {
+  document.getElementById("aboutOverlay").classList.add("active");
+}
+function hideAboutPanel() {
+  document.getElementById("aboutOverlay").classList.remove("active");
+}
+
+// Theme setting
+function setTheme(theme) {
+  if (theme === 'system') {
+    setSystemTheme();
+    return;
+  }
+  document.body.setAttribute("data-theme", theme);
+  if (theme === 'dark') {
+    editor.setOption("theme", "material-darker");
+  } else {
+    editor.setOption("theme", "default");
+  }
+  document.querySelectorAll('.theme-switch button').forEach(btn => btn.classList.remove('active'));
+  if (theme === 'dark') {
+    document.querySelector('.theme-switch button:nth-child(2)').classList.add('active');
+  } else if (theme === 'light') {
+    document.querySelector('.theme-switch button:nth-child(1)').classList.add('active');
+  } else {
+    document.querySelector('.theme-switch button:nth-child(3)').classList.add('active');
+  }
+}
+function setSystemTheme() {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (prefersDark) {
+    setTheme('dark');
+  } else {
+    setTheme('light');
+  }
+  document.querySelectorAll('.theme-switch button').forEach(btn => btn.classList.remove('active'));
+  document.querySelector('.theme-switch button:nth-child(3)').classList.add('active');
+}
+
+// Font size
+document.getElementById("fontSizeSlider").addEventListener("input", e => {
+  document.querySelector(".CodeMirror").style.fontSize = e.target.value + "px";
+});
+// Tab size
+document.getElementById("tabSizeSlider").addEventListener("input", e => {
+  editor.setOption("tabSize", parseInt(e.target.value));
+});
+// Convert tabs
+document.getElementById("convertTabs").addEventListener("change", e => {
+  editor.setOption("indentWithTabs", !e.target.checked);
+});
+// Line wrap
+document.getElementById("lineWrap").addEventListener("change", e => {
+  editor.setOption("lineWrapping", e.target.checked);
+});
+// Line numbers
+document.getElementById("lineNumbers").addEventListener("change", e => {
+  editor.setOption("lineNumbers", e.target.checked);
+});
+
+// Initialize font size
+document.querySelector(".CodeMirror").style.fontSize = document.getElementById("fontSizeSlider").value + "px";
+
+// Initialize tabs
+updateTabs();
+
+// Set initial theme
+setSystemTheme();
+
+// System theme change listener
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  if (document.querySelector('.theme-switch button:nth-child(3)').classList.contains('active')) {
+    setSystemTheme();
+  }
+});
+
+// Refresh editor layout
+setTimeout(() => {
+  editor.refresh();
+}, 100);
+
+// --- New functions for renaming with context menu ---
+const contextMenu = document.getElementById('contextMenu');
+let contextMenuTargetIndex = null;
+
+// Function to rename the file
+function renameFile(index, newName) {
+  files[index].name = newName;
+  updateTabs();
+  // If the renamed file is the currently active one, update the editor's display (though CodeMirror doesn't show filename)
+  if (index === currentFileIndex) {
+    // No direct editor update needed for filename, but UI elements (tabs, sidebar list) are updated by updateTabs()
+  }
+}
+
+// Wrapper for right-click context menu
+function showRenamePromptAt(e, index) {
+  e.preventDefault();
+  // Save content
+  files[currentFileIndex].content = editor.getValue();
+  files[currentFileIndex].active = false;
+  // Save target index
+  contextMenuTargetIndex = index;
+  // Show menu at mouse position
+  showContextMenu(e.pageX, e.pageY);
+}
+
+// Show context menu at (x,y)
+function showContextMenu(x, y) {
+  const menu = document.getElementById('contextMenu');
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.style.display = 'block';
+}
+
+// Hide context menu
+function hideContextMenu() {
+  document.getElementById('contextMenu').style.display = 'none';
+}
+
+// Event listener for rename option in context menu
+document.getElementById('renameOption').addEventListener('click', () => {
+  if (contextMenuTargetIndex !== null) {
+    // Prompt for new name
+    const oldName = files[contextMenuTargetIndex].name;
+    hideContextMenu();
+    // For simplicity, use prompt here; you can replace with custom modal if desired
+    const newName = prompt(`Rename "${oldName}" to:`, oldName);
+    if (newName && newName.trim() !== "" && newName !== oldName) {
+      renameFile(contextMenuTargetIndex, newName.trim());
+    }
+    contextMenuTargetIndex = null;
+  }
+});
+
+// Hide context menu on click outside
+document.addEventListener('click', (e) => {
+  hideContextMenu();
+});
+
+// Optional: hide on window resize or scroll
+window.addEventListener('resize', hideContextMenu);
+window.addEventListener('scroll', hideContextMenu);
+
+// --- New sidebar toggle functionality ---
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebarContainer = document.getElementById('sidebarContainer');
+const editorContainer = document.getElementById('editorContainer');
+
+function toggleSidebar() {
+  sidebarContainer.classList.toggle('collapsed');
+  editorContainer.classList.toggle('collapsed');
+  
+  // Update the toggle button icon
+  if (sidebarContainer.classList.contains('collapsed')) {
+    sidebarToggle.textContent = '▶';
+    sidebarToggle.title = 'Show sidebar';
+  } else {
+    sidebarToggle.textContent = '◀';
+    sidebarToggle.title = 'Hide sidebar';
+  }
+  
+  // Refresh the editor to adjust to new width
+  setTimeout(() => {
+    editor.refresh();
+  }, 300);
+}
+
+// Add event listener to the toggle button
+sidebarToggle.addEventListener('click', toggleSidebar);
+</script>
+
+</body>
+</html>
